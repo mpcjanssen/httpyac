@@ -109,6 +109,48 @@ describe('javascriptVariableReplacer', () => {
       } as unknown as models.ProcessorContext);
       expect(result).toEqual(`foo={{bar}}`);
     });
+    it('should log full variable name when variable is not defined', async () => {
+      const debugSpy = jest.spyOn(log, 'debug').mockImplementation();
+      const result = await replaceJavascriptExpressions(`foo={{my-var}}`, models.VariableType.variable, {
+        variables: {},
+        httpFile: {
+          fileName: 'test',
+        },
+        httpRegion: {
+          symbol: {
+            startLine: 1,
+          },
+        },
+      } as unknown as models.ProcessorContext);
+      expect(result).toEqual(`foo={{my-var}}`);
+      expect(debugSpy).toHaveBeenCalledWith('variable my-var not defined');
+      expect(debugSpy).not.toHaveBeenCalledWith(expect.objectContaining({ message: 'my is not defined' }));
+      debugSpy.mockRestore();
+    });
+    it('should throw error with full name for undefined variable', async () => {
+      await expect(
+        replaceJavascriptExpressions(`http://{{my-name}}/`, models.VariableType.url, {
+          variables: {},
+          httpFile: {
+            fileName: 'test',
+          },
+          httpRegion: {
+            symbol: {
+              startLine: 1,
+            },
+          },
+        } as unknown as models.ProcessorContext)
+      ).rejects.toThrow('my-name is not defined');
+    });
+    it('should still replace variables after an expression threw', async () => {
+      const ctx = {
+        variables: { foo: 'bar' },
+        httpFile: { fileName: 'test' },
+        httpRegion: { symbol: { startLine: 1 } },
+      } as unknown as models.ProcessorContext;
+      await expect(replaceJavascriptExpressions(`{{my-name}}`, models.VariableType.url, ctx)).rejects.toThrow();
+      expect(await replaceJavascriptExpressions(`foo={{foo}}`, models.VariableType.url, ctx)).toEqual('foo=bar');
+    });
     it('should throw error', async () => {
       jest.spyOn(log, 'error').mockImplementation();
       await expect(

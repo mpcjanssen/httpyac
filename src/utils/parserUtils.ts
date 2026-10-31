@@ -441,9 +441,11 @@ export async function parseHandlebarsString(
   let start;
   let result = text;
   let infiniteLoopStopper = 0;
+  // own copy: a shared global regex keeps lastIndex when an evalExpression throws mid-loop
+  const handlebarsRegex = new RegExp(HandlebarsSingleLine, 'gu');
   while (start !== result && infiniteLoopStopper++ < maxNestedVariables) {
     start = result;
-    while ((match = HandlebarsSingleLine.exec(start)) !== null) {
+    while ((match = handlebarsRegex.exec(start)) !== null) {
       const [searchValue, variable] = match;
       const value = await evalExpression(variable, searchValue);
       if (typeof value !== 'undefined' && searchValue === text) {

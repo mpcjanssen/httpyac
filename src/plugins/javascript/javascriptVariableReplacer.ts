@@ -14,9 +14,15 @@ export async function replaceJavascriptExpressions(
     } catch (err) {
       if (type === VariableType.variable) {
         (context.scriptConsole || log).debug(`variable ${variable} not defined`);
-        (context.scriptConsole || log).debug(err);
+        // a ReferenceError names only the part before the first operator (e.g. `my` for `my-var`), so it would be misleading
+        if ((err as Error)?.name !== 'ReferenceError') {
+          (context.scriptConsole || log).debug(err);
+        }
       } else {
         (context.scriptConsole || log).error(`expression ${variable} throws error`);
+        if ((err as Error)?.name === 'ReferenceError') {
+          throw new Error(`${variable} is not defined`);
+        }
         throw err;
       }
       return searchValue;
